@@ -1,4 +1,4 @@
-import { Server, Room } from '@colyseus/core'; import { WebSocketTransport } from '@colyseus/ws-transport'; import { createServer } from 'node:http';
+import { Server, Room } from '@colyseus/core'; import { WebSocketTransport } from '@colyseus/ws-transport'; import { createServer } from 'node:http'; import { rm } from 'node:fs/promises';
 
 const CODECHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const CODESCHANNEL = '$blastpals-codes'; const MAX_PALS = 4;
 
@@ -22,8 +22,10 @@ onLeave(client) { const slot = this.slots.get(client.sessionId); this.slots.dele
 
 async onDispose() { await this.presence.srem(CODES_CHANNEL, this.roomId); } }
 
-const port = Number(process.env.PORT) || 2567;
-
 const http = createServer((req, res) => { res.writeHead(200); res.end('Blast Pals server OK'); });
 
-const gameServer = new Server({ transport: new WebSocketTransport({ server: http }) }); gameServer.define('blast', BlastRoom); gameServer.listen(port).then(() => { console.log(Blast Pals server listening on ws://localhost:${port}); });
+const gameServer = new Server({ transport: new WebSocketTransport({ server: http }) }); gameServer.define('blast', BlastRoom);
+
+async function start() { const instance = Number(process.env.NODEAPPINSTANCE || 0); if (process.env.COLYSEUS_CLOUD !== undefined) { const socketPath = /run/colyseus/${2567 + instance}.sock; await rm(socketPath, { force: true }); await gameServer.listen(socketPath); console.log(Blast Pals server listening on ${socketPath}); } else { const port = (Number(process.env.PORT) || 2567) + instance; await gameServer.listen(port); console.log(Blast Pals server listening on ws://localhost:${port}); } if (typeof process.send === 'function') { process.send('ready'); } }
+
+start(); 
